@@ -7,6 +7,7 @@ def job_helper(job):
     return {
         "id": str(job["_id"]),
         "job_id": job["job_id"],
+        "provider": job["provider"],
         "backend_name": job["backend_name"],
         "notify_status": job["notify_status"],
         "creation_date": job["creation_date"],

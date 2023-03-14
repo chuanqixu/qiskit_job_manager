@@ -9,7 +9,7 @@ def user_helper(user):
         "email": user["email"],
         "is_active": user["is_active"],
         "is_superuser": user["is_superuser"],
-        "ibm_quantum_api": user["ibm_quantum_api"]
+        "ibm_quantum_token": user["ibm_quantum_token"]
     }
 
 
