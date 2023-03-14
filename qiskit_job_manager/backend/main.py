@@ -2,11 +2,18 @@ from fastapi import FastAPI
 import uvicorn
 import argparse
 
+from routes.user_routes import user_router
+from routes.job_routes import job_router
+
 app = FastAPI()
 
-@app.get("/")
-def read_root():
-    return {"messasge": "Welcome to Qiskit Job Manager!"}
+app.include_router(user_router, tags=["User"], prefix="/user")
+app.include_router(job_router, tags=["Job"], prefix="/job")
+
+
+@app.get("/", tags=["Root"])
+async def read_root():
+    return {"message": "Welcome to Qiskit Job Manager!"}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

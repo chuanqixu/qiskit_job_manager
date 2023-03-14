@@ -2,3 +2,4 @@
 /__init__.py
 **settings.json
 qiskit_job_manager/credential/provider_credential.json
+.env
