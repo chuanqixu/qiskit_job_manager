@@ -3,7 +3,7 @@ from email.header import Header
 from email.mime.text import MIMEText
 from email.utils import parseaddr, formataddr
 
-from configure import settings
+from backend.configure import settings
 
 class Notifier:
     def __init__(self):

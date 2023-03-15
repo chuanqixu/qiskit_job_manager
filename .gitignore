@@ -1,5 +1,6 @@
 **__pycache__**
 /__init__.py
+qiskit_job_manager/__init__.py
 **settings.json
 qiskit_job_manager/credential/provider_credential.json
 .env

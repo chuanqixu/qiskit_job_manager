@@ -3,6 +3,10 @@ import os
 
 
 class Settings(BaseSettings):
+    # WEB CONFIGURE
+    HOST: str
+    PORT: int
+
     # Database
     DATABASE_NAME: str
     MONGO_CONNECTION_URL: str
