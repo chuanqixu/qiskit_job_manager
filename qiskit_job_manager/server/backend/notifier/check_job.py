@@ -21,20 +21,23 @@ async def check_job_status():
             job_in_db = job_helper(job)
             user = await user_collection.find_one({"_id": ObjectId(job_in_db["owner_id"])})
             provider_info = job_in_db["provider"]
-            provider = IBMQ.enable_account(user["ibm_quantum_token"], hub=provider_info[0], group=provider_info[1], project=provider_info[2])
-            
-            backend = provider.get_backend(job_in_db["backend_name"])
-            job = backend.retrieve_job(job_in_db["job_id"])
-            job_status = job.status()
-            if job_status.name in job_in_db["notify_status"]:
-                if job_status.name in ['ERROR', 'CANCELLED', 'DONE']:
-                    notifier.send_email(to_addr=user["email"], job_status=job_status.name, job_id=job_in_db["job_id"])
-                    await delete_job_super(job_in_db["id"])
-                else:
-                    notifier.send_email(to_addr=user["email"], job_status=job_status.name, job_id=job_in_db["job_id"])
-                    job_in_db["notify_status"].remove(job_status.name)
-                    await update_job_super(job_in_db["id"], job_in_db)
+            try:
+                provider = IBMQ.enable_account(user["ibm_quantum_token"], hub=provider_info[0], group=provider_info[1], project=provider_info[2])
+                backend = provider.get_backend(job_in_db["backend_name"])
+                job = backend.retrieve_job(job_in_db["job_id"])
+                job_status = job.status()
+                if job_status.name in job_in_db["notify_status"]:
+                    if job_status.name in ['ERROR', 'CANCELLED', 'DONE']:
+                        notifier.send_email(to_addr=user["email"], job_status=job_status.name, job_id=job_in_db["job_id"])
+                        await delete_job_super(job_in_db["id"])
+                    else:
+                        notifier.send_email(to_addr=user["email"], job_status=job_status.name, job_id=job_in_db["job_id"])
+                        job_in_db["notify_status"].remove(job_status.name)
+                        await update_job_super(job_in_db["id"], job_in_db)
 
-            IBMQ.disable_account()
+                IBMQ.disable_account()
+            except:
+                print("WARNING: Connection to IBM Quantum fails!")
+                continue
 
             await asyncio.sleep(interval)
