@@ -1,3 +1,8 @@
 fastapi
 fastapi-users[beanie]
 uvicorn[standard]
+pydantic
+pydantic[dotenv]
+motor
+beanie
+qiskit

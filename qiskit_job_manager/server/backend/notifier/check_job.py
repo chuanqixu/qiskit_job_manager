@@ -19,7 +19,7 @@ async def check_job_status():
     while True:
         async for job in job_collection.find():
             job_in_db = job_helper(job)
-            user = await user_collection.find_one({"_id": ObjectId(job_in_db["onwer_id"])})
+            user = await user_collection.find_one({"_id": ObjectId(job_in_db["owner_id"])})
             provider_info = job_in_db["provider"]
             provider = IBMQ.enable_account(user["ibm_quantum_token"], hub=provider_info[0], group=provider_info[1], project=provider_info[2])
             
