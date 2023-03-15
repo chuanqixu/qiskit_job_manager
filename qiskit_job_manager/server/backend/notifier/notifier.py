@@ -6,6 +6,8 @@ import smtplib
 
 from backend.configure import settings
 
+
+
 class Notifier:
     def __init__(self, from_addr = None, password = None, smtp_host = None, smtp_port = None):
         self.from_addr = settings.NOTIFIER_FROM_ADDR
@@ -25,13 +27,14 @@ class Notifier:
         name, addr = parseaddr(s)
         return formataddr((Header(name, 'utf-8').encode(), addr))
     
-    def send_email(self, to_addr, msg_str = None, job_status = None, job_id = None):
+    def send_email(self, to_addr, subject = None, msg_str = None):
+        subject = '(Send by qiskit_job_manager) ' + subject
         if not msg_str:
             msg_str = "Automatically send by qiskit_job_manager"
         msg = MIMEText(msg_str, 'plain', 'utf-8') # TODO: add job result
         msg['From'] = self._format_addr(f'qiskit_job_manager <{self.from_addr}>')
         msg['To'] = self._format_addr(f'<{to_addr}>')
-        msg['Subject'] = Header(f'(Send by qiskit_job_manager) IBM Quantum Job Status: {job_status} -- Job ID {job_id}', 'utf-8').encode()
+        msg['Subject'] = Header(subject, 'utf-8').encode()
 
         try:
             server = smtplib.SMTP_SSL(self.smtp_host, self.smtp_port)
