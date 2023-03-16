@@ -17,7 +17,7 @@ class JobStatus(Enum):
 
 
 
-JOB_FINAL_STATES = (JobStatus.DONE, JobStatus.CANCELLED, JobStatus.ERROR)
+JOB_FINAL_STATES = (JobStatus.DONE.value, JobStatus.CANCELLED.value, JobStatus.ERROR.value)
 
 
 
