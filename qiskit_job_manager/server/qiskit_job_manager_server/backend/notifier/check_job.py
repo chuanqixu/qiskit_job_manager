@@ -1,12 +1,13 @@
 import asyncio
-from backend.database.db import job_collection, user_collection
-from backend.database.crud_job import job_helper, delete_job_super, update_job_super
-from qiskit import IBMQ
-from backend.configure import settings
 from bson.objectid import ObjectId
-from backend.notifier.notifier import Notifier
-from backend.schemas.job import JOB_FINAL_STATES
 
+from ..configure import settings
+from ..database.db import job_collection, user_collection
+from ..database.crud_job import job_helper, delete_job_super, update_job_super
+from ..schemas.job import JOB_FINAL_STATES
+from .notifier import Notifier
+
+from qiskit import IBMQ
 from qiskit.providers.ibmq.api.exceptions import RequestsApiError
 from qiskit.providers.ibmq import IBMQProviderError, IBMQBackendApiError
 from qiskit.providers import QiskitBackendNotFoundError

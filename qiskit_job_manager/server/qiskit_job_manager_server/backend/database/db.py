@@ -1,8 +1,7 @@
 import motor.motor_asyncio
 from fastapi_users.db import BeanieUserDatabase
-from backend.schemas.user import User
-
-from backend.configure import settings
+from ..configure import settings
+from ..schemas.user import User
 
 
 

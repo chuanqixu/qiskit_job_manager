@@ -1,26 +1,26 @@
 from fastapi import APIRouter, Body, Depends
 from fastapi.encoders import jsonable_encoder
 
-from backend.database.crud_job import (
+from ..database.crud_job import (
     add_job,
     delete_job,
     retrieve_job,
     retrieve_jobs,
     update_job,
 )
-from backend.schemas.job import (
+from ..schemas.job import (
     JobSchema,
     JobRead,
     JobUpdate,
 )
 
-from backend.schemas.response import (
+from ..schemas.response import (
     ErrorResponseModel,
     ResponseModel,
 )
 
 from fastapi_users.db import BeanieUserDatabase
-from backend.routers.user_manager import current_active_user
+from ..routers.user_manager import current_active_user
 
 
 job_router = APIRouter()

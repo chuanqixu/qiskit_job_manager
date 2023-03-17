@@ -10,8 +10,8 @@ from fastapi_users.authentication import (
 )
 from fastapi_users.db import BeanieUserDatabase, ObjectIDIDMixin
 
-from backend.database import get_user_db
-from backend.schemas.user import User
+from ..database import get_user_db
+from ..schemas.user import User
 
 SECRET = "SECRET"
 

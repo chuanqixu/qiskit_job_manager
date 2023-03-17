@@ -4,7 +4,7 @@ from email.mime.text import MIMEText
 from email.utils import parseaddr, formataddr
 import smtplib
 
-from backend.configure import settings
+from ..configure import settings
 
 
 

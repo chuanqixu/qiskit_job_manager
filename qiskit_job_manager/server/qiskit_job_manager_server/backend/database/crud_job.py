@@ -1,6 +1,6 @@
 from bson.objectid import ObjectId
-from backend.schemas.user import User
-from backend.database.db import job_collection
+from ..schemas.user import User
+from ..database.db import job_collection
 
 
 def job_helper(job):

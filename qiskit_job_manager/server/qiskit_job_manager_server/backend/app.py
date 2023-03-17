@@ -1,10 +1,10 @@
 from beanie import init_beanie
 from fastapi import Depends, FastAPI
 
-from backend.database import db
-from backend.schemas.user import User, UserCreate, UserRead, UserUpdate
-from backend.routers.user_manager import auth_backend, current_active_user, fastapi_users
-from backend.routers.job_routes import job_router
+from .database import db
+from .schemas.user import User, UserCreate, UserRead, UserUpdate
+from .routers.user_manager import auth_backend, current_active_user, fastapi_users
+from .routers.job_routes import job_router
 
 app = FastAPI()
 
