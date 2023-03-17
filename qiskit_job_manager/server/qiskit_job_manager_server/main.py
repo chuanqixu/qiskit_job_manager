@@ -6,7 +6,7 @@ from .notifier.check_job import check_job_status
 def notify():
     asyncio.run(check_job_status())
 
-def run(host=settings.HOST, port=settings.PORT, **kwargs):
+def run_server(host=settings.HOST, port=settings.PORT, **kwargs):
     uvicorn.run("qiskit_job_manager_server.app:app", host=host, port=port, **kwargs)
 
 if __name__ == "__main__":
