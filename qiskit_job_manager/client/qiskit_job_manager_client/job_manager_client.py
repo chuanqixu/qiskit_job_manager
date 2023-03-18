@@ -3,7 +3,7 @@ from qiskit.providers.ibmq.job import IBMQJob
 from qiskit.providers.backend import BackendV1 as Backend
 
 from qiskit_job_manager_client.configure import settings
-
+from qiskit_job_manager_client.job_schema import JobStatus
 
 
 class JobManagerClient:
@@ -26,7 +26,7 @@ class JobManagerClient:
         else:
             self.password = settings.PASSWORD
 
-    async def handler(self, response):
+    async def _handler(self, response):
         print("Connect successfully!\n")
         print("Response:")
         print("Status:", response.status)
@@ -35,7 +35,7 @@ class JobManagerClient:
         html = await response.text()
         print("Body:", html)
     
-    async def non_handler(self, response):
+    async def _non_handler(self, response):
         await response.text()
 
     async def _request(self, request, url, special_handler_dict = {}, **request_kwargs):
@@ -61,7 +61,7 @@ class JobManagerClient:
                     if response.status in special_handler_dict.keys():
                         await special_handler_dict[response.status](response)
                     else:
-                        await self.handler(response)
+                        await self._handler(response)
             except Exception as e:
                 raise e
         
@@ -73,7 +73,7 @@ class JobManagerClient:
     async def _get_token(self):
         form_data_str = f"username={self.email}&password={self.password}"
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        token_response = await self._request("post", "/auth/jwt/login", special_handler_dict={200: self.non_handler}, data=form_data_str, headers=headers)
+        token_response = await self._request("post", "/auth/jwt/login", special_handler_dict={200: self._non_handler}, data=form_data_str, headers=headers)
         token = await token_response.json()
         return (token["token_type"], token["access_token"])
 
@@ -89,7 +89,7 @@ class JobManagerClient:
 
     # ------------------------------ User ---------------------------------
 
-    async def user_create(self, email, password, ibm_quantum_token = None):
+    async def create_user(self, email, password, ibm_quantum_token = None):
         data = {
             "email": email,
             "password": password,
@@ -102,10 +102,10 @@ class JobManagerClient:
         self.password = password
         return await self._request("post", "/auth/register", json = data)
 
-    async def user_print_info(self):
+    async def print_user_info(self):
         return await self._auth_request("get", "/users/me")
 
-    async def user_update_info(self, password = None, ibm_quantum_token = None):
+    async def update_user_info(self, password = None, ibm_quantum_token = None):
         data = {}
         if password:
             data["password"] = password
@@ -116,7 +116,7 @@ class JobManagerClient:
     
     # async def user_delete(self):
     #     user_id = (await (await self._auth_request("get", "/users/me", special_handler_dict={200: self.non_handler})).json())["id"]
-    #     return await self._auth_request("delete", "/users/me", params=user_id)
+    #     return await self._auth_request("delete", "/users/me/", params=user_id)
 
     # ---------------------------------------------------------------------
 
@@ -124,59 +124,91 @@ class JobManagerClient:
 
     # --------------------------------- Job -------------------------------
 
-    # def register_job(self, backend_name, job, job_status = None):
-    #     data = self._parse_job_info(backend_name, job, job_status)
-        
-
-    # def send(self, msg):
-    #     self.sock.send(pickle.dumps(msg))
+    async def print_all_job_info(self):
+        return await self._auth_request("get", "/job/")
     
-    def _parse_job_info(self, backend_name, job, job_status = None):
+    async def print_job_info(self, job_id):
+        return await self._auth_request("get", "/job/ibm_id", params=job_id)
+    
+    async def delete_job(self, job_id):
+        return await self._auth_request("delete", "/job/ibm_id", params=job_id)
+    
+    async def _delete_job(self, job_id):
+        return await self._auth_request("delete", "/job/", params=job_id)
+
+    async def delete_all_job(self):
+        job_list = await self.print_all_job_info()
+        for job in job_list():
+            await self._delete_job(job["id"])
+
+    async def register_job(self, job, notify_status = None, backend_name = None)
+        if not backend_name:
+            while not isinstance(job, IBMQJob):
+                job = job[0]
+            backend_name = job.backend().name()
+            credentials = job.backend().provider().credentials
+            provider = {
+                credentials.hub,
+                credentials.group,
+                credentials.project
+            }
+
+        async with aiohttp.ClientSession(base_url=self.host_full_url) as session:
+            
+            # get token
+            form_data_str = f"username={self.email}&password={self.password}"
+            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+            token_response = await self._request("post", "/auth/jwt/login", special_handler_dict={200: self._non_handler}, data=form_data_str, headers=headers)
+            token = await token_response.json()
+            headers= {"Authorization": f"{token[0]} {token[1]}"}
+
+            # register jobs
+            for job_info in self._parse_job_info(job, notify_status):
+                job_data = {
+                    "job_id": job_info[0],
+                    "backend_name": backend_name,
+                    "notify_status": job_info[1],
+                    "creation_date": str(job.creation_date())
+                }
+
+                try:
+                    async with session.post("/job/", json=job_data, headers=headers)
+                except Exception as e:
+                    raise e
+        
+        print("Successfully register all jobs!")
+    
+    def _parse_job_info(self, job, notify_status = None):
         job_info = []
 
-        # if isinstance(job, list) and isinstance(job_status, list) and len(job) == len(job_status):
-        #     pass
-        # elif isinstance(job, str) or isinstance(job, IBMJob):
-        #     pass
-        # else:
-        #     raise Exception("Input wrong!")
-        
-        if isinstance(backend_name, Backend):
-            backend_name = backend_name.configuration().backend_name
-
         if isinstance(job, list):
-            if not job_status:
+            if not notify_status:
+                for j, j_s in zip(job, notify_status):
+                    job_info += self._parse_job_info(j, j_s)
+            else:
                 for j in job:
-                    job_info += self._parse_job_info(backend_name, j, job_status)[1]
-            else:
-                for j, j_s in zip(job, job_status):
-                    job_info += self._parse_job_info(backend_name, j, j_s)[1]
-        elif isinstance(job, str):
-            if isinstance(job_status, str):
-                job_info = [job, [job_status]]
-            elif isinstance(job_status, list) and isinstance(job_status[0], str):
-                job_info = [job, job_status]
-            elif not job_status:
-                job_info = [job, ["DONE"]]
-            else:
-                raise Exception("Wrong input format!")
+                    job_info += self._parse_job_info(j, notify_status)
+                
         elif isinstance(job, IBMQJob):
-            if isinstance(job_status, str):
-                job_info = [job.job_id(), [job_status]]
-            elif isinstance(job_status, list) and isinstance(job_status[0], str):
-                job_info = [job.job_id(), job_status]
-            elif not job_status:
+            if isinstance(notify_status, str):
+                job_info = [job.job_id(), [notify_status]]
+            elif isinstance(notify_status, list):
+                for status in notify_status:
+                    if status not in JobStatus:
+                        raise ValueError("Status wrong!")
+                job_info = [job.job_id(), notify_status]
+            elif not notify_status:
                 job_info = [job.job_id(), ["DONE"]]
             else:
-                raise Exception("Wrong input format!")
+                raise ValueError("Wrong input format!")
 
-        if not isinstance(job_info[0], list):
-            job_info = [job_info]
-        return [backend_name, job_info]
+        return job_info
+
+    # ---------------------------------------------------------------------
 
 
 if __name__ == "__main__":
     client = JobManagerClient()
-    asyncio.run(client.user_delete())
+    asyncio.run(client.print_all_job_info())
 
 
