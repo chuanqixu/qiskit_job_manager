@@ -7,18 +7,24 @@ from qiskit_job_manager_client.configure import settings
 
 
 class JobManagerClient:
-    def __init__(self, host_url = None, host_port = None) -> None:
-        if host_url:
+    def __init__(self, host_url = None, host_port = None, email = None, password = None) -> None:
+        if host_url or not settings.HOST:
             self.host_url = host_url
         else:
             self.host_url = settings.HOST
-        if host_port:
+        if host_port or not settings.PORT:
             self.host_port = host_port
         else:
             self.host_port = settings.PORT
         self.host_full_url = self.host_url + ":" + str(self.host_port)
-        self.email = settings.EMAIL
-        self.password = settings.PASSWORD
+        if email or not settings.EMAIL:
+            self.email = email
+        else:
+            self.email = settings.EMAIL
+        if password or not settings.PASSWORD:
+            self.password = password
+        else:
+            self.password = settings.PASSWORD
 
     async def handler(self, response):
         print("Connect successfully!\n")
@@ -64,17 +70,6 @@ class JobManagerClient:
     async def test_connection(self):
         return await self._request("get", "/")
     
-    async def user_create(self, email, password, ibm_quantum_token = None):
-        data = {
-            "email": email,
-            "password": password,
-            "is_active": True,
-            "is_superuser": False,
-            "is_verified": False,
-            "ibm_quantum_token": ibm_quantum_token
-        }
-        return await self._request("post", "/auth/register", json = data)
-    
     async def _get_token(self):
         form_data_str = f"username={self.email}&password={self.password}"
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
@@ -90,14 +85,48 @@ class JobManagerClient:
             request_kwargs["headers"]= {"Authorization": f"{token[0]} {token[1]}"}
         return await self._request(request=request, url=url, special_handler_dict=special_handler_dict, **request_kwargs)
 
-    async def user_info(self):
+
+
+    # ------------------------------ User ---------------------------------
+
+    async def user_create(self, email, password, ibm_quantum_token = None):
+        data = {
+            "email": email,
+            "password": password,
+            "is_active": True,
+            "is_superuser": False,
+            "is_verified": False,
+            "ibm_quantum_token": ibm_quantum_token
+        }
+        self.email = email
+        self.password = password
+        return await self._request("post", "/auth/register", json = data)
+
+    async def user_print_info(self):
         return await self._auth_request("get", "/users/me")
+
+    async def user_update_info(self, password = None, ibm_quantum_token = None):
+        data = {}
+        if password:
+            data["password"] = password
+            self.password = password
+        if ibm_quantum_token:
+            data["ibm_quantum_token"] = ibm_quantum_token
+        return await self._auth_request("patch", "/users/me", json=data)
+    
+    # async def user_delete(self):
+    #     user_id = (await (await self._auth_request("get", "/users/me", special_handler_dict={200: self.non_handler})).json())["id"]
+    #     return await self._auth_request("delete", "/users/me", params=user_id)
+
+    # ---------------------------------------------------------------------
+
+
+
+    # --------------------------------- Job -------------------------------
 
     # def register_job(self, backend_name, job, job_status = None):
     #     data = self._parse_job_info(backend_name, job, job_status)
-    #     self.sock.send(pickle.dumps(data))
-    #     import time
-    #     time.sleep(0.5)
+        
 
     # def send(self, msg):
     #     self.sock.send(pickle.dumps(msg))
@@ -148,6 +177,6 @@ class JobManagerClient:
 
 if __name__ == "__main__":
     client = JobManagerClient()
-    asyncio.run(client.user_info())
+    asyncio.run(client.user_delete())
 
 
