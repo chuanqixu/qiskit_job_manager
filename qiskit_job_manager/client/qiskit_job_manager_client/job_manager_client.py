@@ -1,45 +1,97 @@
-import socket, pickle
+import aiohttp, asyncio
 from qiskit.providers.ibmq.job import IBMQJob
 from qiskit.providers.backend import BackendV1 as Backend
 
-import aiohttp, asyncio
+from qiskit_job_manager_client.configure import settings
+
+
 
 class JobManagerClient:
-    def __init__(self, host_url, host_port) -> None:
-        self.host_url = host_url
-        self.host_port = host_port
-        self.host_full_url = host_url + ":" + str(host_port)
-        # self.host_info = host_info
-        # self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # self.sock.connect(self.host_info)
+    def __init__(self, host_url = None, host_port = None) -> None:
+        if host_url:
+            self.host_url = host_url
+        else:
+            self.host_url = settings.HOST
+        if host_port:
+            self.host_port = host_port
+        else:
+            self.host_port = settings.PORT
+        self.host_full_url = self.host_url + ":" + str(self.host_port)
+        self.email = settings.EMAIL
+        self.password = settings.PASSWORD
+
+    async def handler(self, response):
+        print("Connect successfully!\n")
+        print("Response:")
+        print("Status:", response.status)
+        print("Content-type:", response.headers['content-type'])
+
+        html = await response.text()
+        print("Body:", html)
     
+    async def non_handler(self, response):
+        await response.text()
+
+    async def _request(self, request, url, special_handler_dict = {}, **request_kwargs):
+        if not isinstance(special_handler_dict, dict):
+            raise ValueError("handle_dict should be a dict object!")
+        
+        async with aiohttp.ClientSession(base_url=self.host_full_url) as session:
+            if request == "get":
+                request_func = session.get
+            elif request == "post":
+                request_func = session.post
+            elif request == "put":
+                request_func = session.put
+            elif request == "delete":
+                request_func = session.delete
+            elif request == "patch":
+                request_func = session.patch
+            else:
+                raise ValueError("Input request wrong!")
+            
+            try:
+                async with request_func(url, **request_kwargs) as response:
+                    if response.status in special_handler_dict.keys():
+                        await special_handler_dict[response.status](response)
+                    else:
+                        await self.handler(response)
+            except Exception as e:
+                raise e
+        
+        return response
+
     async def test_connection(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(self.host_full_url) as response:
-                if response.status == 200:
-                    print("Connect successfully!\n")
-                    print("Status:", response.status)
-                    print("Content-type:", response.headers['content-type'])
-
-                    html = await response.text()
-                    print("Body:", html)
-                    return True
-                else:
-                    raise ConnectionError(f"Connect failed! Status: {response.status}")
+        return await self._request("get", "/")
     
-    async def create_user(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.post(self.host_full_url) as response:
-                if response.status == 200:
-                    print("Connect successfully!\n")
-                    print("Status:", response.status)
-                    print("Content-type:", response.headers['content-type'])
+    async def user_create(self, email, password, ibm_quantum_token = None):
+        data = {
+            "email": email,
+            "password": password,
+            "is_active": True,
+            "is_superuser": False,
+            "is_verified": False,
+            "ibm_quantum_token": ibm_quantum_token
+        }
+        return await self._request("post", "/auth/register", json = data)
+    
+    async def _get_token(self):
+        form_data_str = f"username={self.email}&password={self.password}"
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        token_response = await self._request("post", "/auth/jwt/login", special_handler_dict={200: self.non_handler}, data=form_data_str, headers=headers)
+        token = await token_response.json()
+        return (token["token_type"], token["access_token"])
 
-                    html = await response.text()
-                    print("Body:", html)
-                    return True
-                else:
-                    raise ConnectionError(f"Connect failed! Status: {response.status}")
+    async def _auth_request(self, request, url, special_handler_dict = {}, **request_kwargs):
+        token = await self._get_token()
+        if "headers" in request_kwargs.keys():
+            request_kwargs["headers"]["Authorization"] = f"{token[0]} {token[1]}"
+        else:
+            request_kwargs["headers"]= {"Authorization": f"{token[0]} {token[1]}"}
+        return await self._request(request=request, url=url, special_handler_dict=special_handler_dict, **request_kwargs)
+
+    async def user_info(self):
+        return await self._auth_request("get", "/users/me")
 
     # def register_job(self, backend_name, job, job_status = None):
     #     data = self._parse_job_info(backend_name, job, job_status)
@@ -93,6 +145,9 @@ class JobManagerClient:
             job_info = [job_info]
         return [backend_name, job_info]
 
+
 if __name__ == "__main__":
-    client = JobManagerClient("http://127.0.0.1", 80)
-    asyncio.run(client.test_connection())
+    client = JobManagerClient()
+    asyncio.run(client.user_info())
+
+
