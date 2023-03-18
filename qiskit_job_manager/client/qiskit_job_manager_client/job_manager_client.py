@@ -13,7 +13,7 @@ class JobManagerClient:
         # self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # self.sock.connect(self.host_info)
     
-    async def test_log(self):
+    async def test_connection(self):
         async with aiohttp.ClientSession() as session:
             async with session.get(self.host_full_url) as response:
                 if response.status == 200:
@@ -95,4 +95,4 @@ class JobManagerClient:
 
 if __name__ == "__main__":
     client = JobManagerClient("http://127.0.0.1", 80)
-    asyncio.run(client.test_log())
+    asyncio.run(client.test_connection())

@@ -1,10 +1,13 @@
 import uvicorn
 import argparse, multiprocessing, asyncio
-from backend.configure import settings
-from backend.notifier.check_job import check_job_status
+from .configure import settings
+from .notifier.check_job import check_job_status
 
 def notify():
     asyncio.run(check_job_status())
+
+def run_server(host=settings.HOST, port=settings.PORT, **kwargs):
+    uvicorn.run("qiskit_job_manager_server.app:app", host=host, port=port, **kwargs)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -14,4 +17,4 @@ if __name__ == "__main__":
 
     notify_process = multiprocessing.Process(target=notify)
     notify_process.start()
-    uvicorn.run("backend.app:app", host=args.host, port=args.port, reload=True, log_level="info")
+    uvicorn.run("qiskit_job_manager_server.app:app", host=args.host, port=args.port, reload=True, log_level="info")
