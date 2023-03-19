@@ -17,9 +17,23 @@ def job_helper(job):
 
 # Add a new job into to the database
 async def add_job(job_data: dict, user: User) -> dict:
-    job_data["owner_id"] = str(user.id)
-    job = await job_collection.insert_one(job_data)
-    new_job = await job_collection.find_one({"_id": job.inserted_id})
+    if user.is_superuser:
+        job = await job_collection.find_one({"job_id": job_data["job_id"]})
+    else:
+        job = await job_collection.find_one({"job_id": job_data["job_id"], "owner_id": str(user.id)})
+    if job:
+        if set(job["notify_status"]).issubset(set(job_data["notify_status"])):
+            job["notify_status"] = job_data["notify_status"]
+        updated_job = await job_collection.update_one(
+            {"job_id": job["job_id"]}, {"$set": job}
+        )
+        if updated_job:
+            return job_helper(job)
+        return {}
+    else:
+        job_data["owner_id"] = str(user.id)
+        job = await job_collection.insert_one(job_data)
+        new_job = await job_collection.find_one({"_id": job.inserted_id})
     return job_helper(new_job)
 
 
