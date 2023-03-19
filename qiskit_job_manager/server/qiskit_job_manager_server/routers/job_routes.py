@@ -4,9 +4,12 @@ from fastapi.encoders import jsonable_encoder
 from ..database.crud_job import (
     add_job,
     delete_job,
+    delete_job_by_ibm_job_id,
     retrieve_job,
     retrieve_jobs,
+    retrieve_job_by_ibm_job_id,
     update_job,
+    update_job_by_ibm_job_id
 )
 from ..schemas.job import (
     JobSchema,
@@ -49,6 +52,14 @@ async def get_job_data(id, user: BeanieUserDatabase = Depends(current_active_use
     return ErrorResponseModel("An error occurred.", 404, "Job doesn't exist.")
 
 
+@job_router.get("/ibm_job_id/{id}", response_description="Job data retrieved")
+async def get_job_data_by_ibm_job_id(ibm_job_id, user: BeanieUserDatabase = Depends(current_active_user)):
+    job = await retrieve_job_by_ibm_job_id(ibm_job_id, user)
+    if job:
+        return ResponseModel(job, "job data retrieved successfully")
+    return ErrorResponseModel("An error occurred.", 404, "Job doesn't exist.")
+
+
 @job_router.put("/{id}")
 async def update_job_data(id: str, req: JobUpdate = Body(...), user: BeanieUserDatabase = Depends(current_active_user)):
     req = {k: v for k, v in req.dict().items() if v is not None}
@@ -56,6 +67,22 @@ async def update_job_data(id: str, req: JobUpdate = Body(...), user: BeanieUserD
     if updated_job:
         return ResponseModel(
             "Job with ID: {} name update is successful".format(id),
+            "Job name updated successfully",
+        )
+    return ErrorResponseModel(
+        "An error occurred",
+        404,
+        "There was an error updating the job data.",
+    )
+
+
+@job_router.put("/ibm_job_id/{id}")
+async def update_job_data_by_ibm_job_id(ibm_job_id: str, req: JobUpdate = Body(...), user: BeanieUserDatabase = Depends(current_active_user)):
+    req = {k: v for k, v in req.dict().items() if v is not None}
+    updated_job = await update_job_by_ibm_job_id(ibm_job_id, req, user)
+    if updated_job:
+        return ResponseModel(
+            "Job with ID: {} name update is successful".format(ibm_job_id),
             "Job name updated successfully",
         )
     return ErrorResponseModel(
@@ -74,4 +101,16 @@ async def delete_job_data(id: str, user: BeanieUserDatabase = Depends(current_ac
         )
     return ErrorResponseModel(
         "An error occurred", 404, "Job with id {0} doesn't exist".format(id)
+    )
+
+
+@job_router.delete("/ibm_job_id/{id}", response_description="Job data deleted from the database")
+async def delete_job_data_by_ibm_job_id(ibm_job_id: str, user: BeanieUserDatabase = Depends(current_active_user)):
+    deleted_job = await delete_job_by_ibm_job_id(ibm_job_id, user)
+    if deleted_job:
+        return ResponseModel(
+            "Job with ID: {} removed".format(ibm_job_id), "Job deleted successfully"
+        )
+    return ErrorResponseModel(
+        "An error occurred", 404, "Job with id {0} doesn't exist".format(ibm_job_id)
     )

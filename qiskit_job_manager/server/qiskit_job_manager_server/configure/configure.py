@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     # WEB CONFIGURE
     HOST: str
     PORT: int
+    JWT_SECRET: str
 
     # Database
     DATABASE_NAME: str
