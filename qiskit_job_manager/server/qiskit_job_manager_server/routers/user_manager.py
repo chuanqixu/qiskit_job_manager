@@ -10,10 +10,11 @@ from fastapi_users.authentication import (
 )
 from fastapi_users.db import BeanieUserDatabase, ObjectIDIDMixin
 
+from ..configure import settings
 from ..database import get_user_db
 from ..schemas.user import User
 
-SECRET = "SECRET"
+SECRET = settings.JWT_SECRET
 
 
 class UserManager(ObjectIDIDMixin, BaseUserManager[User, PydanticObjectId]):
