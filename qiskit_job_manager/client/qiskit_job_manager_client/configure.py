@@ -3,11 +3,11 @@ import os
 
 
 class Settings(BaseSettings):
-    # WEB CONFIGURE
+    # Web server configure
     HOST: str
     PORT: int
 
-    # Notifier SMTP information
+    # Account information
     EMAIL: str
     PASSWORD: str
 

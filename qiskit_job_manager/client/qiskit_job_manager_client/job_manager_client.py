@@ -502,6 +502,7 @@ class JobManagerClient:
 
 
 if __name__ == "__main__":
+    pass
     # 1. initiate client
     # client = JobManagerClient()
     # client = JobManagerClient(host_url = None, host_port = None, email = None, password = None)
@@ -543,7 +544,5 @@ if __name__ == "__main__":
     #   (4) delete jobs
     # client.delete_job(job_id)
     # client.delete_all_job()
-
-
 
     # The input is a list of IBMQJob objects (the list can be rugged and multi-dimentional)
