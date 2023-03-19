@@ -422,6 +422,7 @@ class JobManagerClient:
 
         return job_info
     
+
     def _parse_job_list(self, job_list):
         parsed_job_list = []
 
@@ -435,6 +436,67 @@ class JobManagerClient:
             raise ValueError("Wrong input format!")
 
         return parsed_job_list
+    
+
+    async def register_start_and_done_async(self, job, notify_status = None):
+        import copy
+        job_list = copy.deepcopy(job)
+        while not isinstance(job_list, IBMQJob):
+            job_list = job_list[0]
+        job_first = job_list
+
+        job_list = copy.deepcopy(job)
+        while not isinstance(job_list, IBMQJob):
+            job_list = job_list[0]
+        job_last = job_list
+
+        backend_name = job_first.backend().name()
+        credentials = job_first.backend().provider().credentials
+        provider = [
+            credentials.hub,
+            credentials.group,
+            credentials.project
+        ]
+
+        if not notify_status:
+            notify_status = [["RUNNING"], ["DONE"]]
+
+        async with aiohttp.ClientSession(base_url=self.host_full_url) as session:
+            
+            # get token
+            form_data_str = f"username={self.email}&password={self.password}"
+            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+            async with session.post("/auth/jwt/login", data=form_data_str, headers=headers) as response:
+                token_response = response
+                token = await token_response.json()
+            headers= {"Authorization": f"{token['token_type']} {token['access_token']}"}
+
+            # register jobs
+            is_success = True
+            for i, job_i in enumerate([job_first, job_last]):
+                job_data = {
+                    "job_id": job_i.job_id(),
+                    "backend_name": backend_name,
+                    "provider": provider,
+                    "notify_status": notify_status[i],
+                    "creation_date": str(job_i.creation_date())
+                }
+
+                try:
+                    async with session.post("/job/", json=job_data, headers=headers) as response:
+                        if response.status != 200:
+                            is_success = False
+                except Exception as e:
+                    raise e
+        
+        if is_success:
+            print("Successfully register all jobs!")
+        else:
+            print("Errors in register jobs!")
+    
+
+    def register_start_and_done(self, job, notify_status = None):
+        asyncio.run(self.register_start_and_done_async(job=job, notify_status=notify_status))
 
     # ---------------------------------------------------------------------
 
@@ -463,6 +525,7 @@ if __name__ == "__main__":
     # job += [backend.retrieve_job(job_id[1][0])]
 
     # client.register_job(job)
+    # client.register_start_and_done(job)
 
     #   (2) job information
     # client.print_all_job_info()
