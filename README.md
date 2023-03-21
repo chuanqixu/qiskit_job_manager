@@ -2,12 +2,15 @@
 
 A package for setting up a **server** for the email notification service, and the **client** for interacting with the server.
 
+**Note: While users' passwords are stored only with their hash values, IBM Quantum Token is stored with the original values because the server needs to login the account to retrieve the job status!**
+
 # Server
 
 ## Feature
 
 * [X] Basic APIs for IBM Quantum job management based on [FastAPI](https://github.com/tiangolo/fastapi), including sending emails when job status meets the requirements.
 * [X] Ready-to-use register, login, reset passwords, and authentication based on [FastAPI Users](https://github.com/fastapi-users/fastapi-users#readme).
+* [X] Based on [MongoDB](https://www.mongodb.com/) for data storage.
 
 ## Set up
 
