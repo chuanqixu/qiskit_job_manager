@@ -11,38 +11,68 @@ class JobManagerClient:
         self.host_port = None
         self.email = None
         self.password = None
-        
+        self.auth_token = None
+        self.auth_header = None
+
         if host_url or not settings.HOST:
             self.host_url = host_url
         else:
             self.host_url = settings.HOST
-        
+
         if host_port or not settings.PORT:
             self.host_port = host_port
         else:
             self.host_port = settings.PORT
-        
+
         if not self.host_url or not self.host_port:
-            raise ValueError("Please specify host url and port")
-        
+            raise ValueError("Please specify host url and port!")
+
         self.host_full_url = self.host_url + ":" + str(self.host_port)
         if email or not settings.EMAIL:
             self.email = email
         else:
             self.email = settings.EMAIL
-        
+
         if password or not settings.PASSWORD:
             self.password = password
         else:
             self.password = settings.PASSWORD
-        
+
+        if self.email and self.password:
+            self.login(self.email, self.password)
+
         # for print
         self._json_indent = 4
 
-    
+
     def login(self, email, password):
-        self.email = email
-        self.password = password
+        # get token
+        form_data_str = f"username={email}&password={password}"
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        token = asyncio.run(self._request("post", "/auth/jwt/login", return_json=True, handler=self._empty_handler, data=form_data_str, headers=headers))
+
+        self.auth_token = token
+        self.auth_header = {"Authorization": f"{token['token_type']} {token['access_token']}"}
+
+    def _check_login(self):
+        if not self.auth_header:
+            raise ValueError("Please first login!")
+
+    def _add_auth_to_request_kwargs(self, request_kwargs):
+        self._check_login()
+        if "headers" in request_kwargs.keys():
+            request_kwargs["headers"]["Authorization"] = self.auth_header["Authorization"]
+        else:
+            request_kwargs["headers"]= self.auth_header
+        return request_kwargs
+
+    # def test(self):
+    #     asyncio.run(self.test_print_user_info_async())
+
+    # async def test_print_user_info_async(self):
+    #     response_json = await self._request("get", "/users/me", return_json=True, headers={"Authorization": f"{self.auth_token['token_type']} {self.auth_token['access_token']}"})
+    #     print(json.dumps(response_json, indent = self._json_indent))
+    #     return response_json
 
 
     async def _handler(self, response):
@@ -53,14 +83,15 @@ class JobManagerClient:
 
         # html = await response.text()
         # print("Body:", html)
-    
-    async def _non_handler(self, response):
-        await response.text()
 
-    async def _request(self, request, url, return_json = False, special_handler_dict = {}, **request_kwargs):
-        if not isinstance(special_handler_dict, dict):
-            raise ValueError("handle_dict should be a dict object!")
-        
+    async def _empty_handler(self, response):
+        # await response.text()
+        pass
+
+    async def _request(self, request, url, return_json = False, handler = None, **request_kwargs):
+        if not handler:
+            handler = self._handler
+
         async with aiohttp.ClientSession(base_url=self.host_full_url) as session:
             if request == "get":
                 request_func = session.get
@@ -74,13 +105,10 @@ class JobManagerClient:
                 request_func = session.patch
             else:
                 raise ValueError("Input request wrong!")
-            
+
             try:
                 async with request_func(url, **request_kwargs) as response:
-                    if response.status in special_handler_dict.keys():
-                        await special_handler_dict[response.status](response)
-                    else:
-                        await self._handler(response)
+                    await handler(response)
                     if return_json:
                         response_json = await response.json()
             except Exception as e:
@@ -97,51 +125,8 @@ class JobManagerClient:
     async def _auth_request(self, request, url, return_json = False, special_handler_dict = {}, **request_kwargs):
         # because there are two requests: 1. to get the token; 2. to get the response
         # it is better not to reuse request, because it needs two session
-
-        if not isinstance(special_handler_dict, dict):
-            raise ValueError("handle_dict should be a dict object!")
-        
-        async with aiohttp.ClientSession(base_url=self.host_full_url) as session:
-            # get token
-            form_data_str = f"username={self.email}&password={self.password}"
-            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-            token_response = await session.post("/auth/jwt/login", data=form_data_str, headers=headers)
-            token = await token_response.json()
-
-            if "headers" in request_kwargs.keys():
-                request_kwargs["headers"]["Authorization"] = f"{token['token_type']} {token['access_token']}"
-            else:
-                request_kwargs["headers"]= {"Authorization": f"{token['token_type']} {token['access_token']}"}
-            
-            if request == "get":
-                request_func = session.get
-            elif request == "post":
-                request_func = session.post
-            elif request == "put":
-                request_func = session.put
-            elif request == "delete":
-                request_func = session.delete
-            elif request == "patch":
-                request_func = session.patch
-            else:
-                raise ValueError("Input request wrong!")
-            
-            try:
-                async with request_func(url, **request_kwargs) as response:
-                    if response.status in special_handler_dict.keys():
-                        await special_handler_dict[response.status](response)
-                    else:
-                        await self._handler(response)
-                    if return_json:
-                        response_json = await response.json()
-            except Exception as e:
-                raise e
-        
-        if return_json:
-            return response_json
-        else:
-            return True
-
+        request_kwargs = self._add_auth_to_request_kwargs(request_kwargs)
+        return await self._request(request=request, url=url, return_json=return_json, handler=special_handler_dict, **request_kwargs)
 
 
     # ------------------------------ User ---------------------------------
@@ -208,23 +193,16 @@ class JobManagerClient:
     
 
     async def print_job_info_async(self, job_id):
+        self._check_login()
+
         job_id_list = self._parse_job_list(job_id)
         job_info_list = []
         async with aiohttp.ClientSession(base_url=self.host_full_url) as session:
-            
-            # get token
-            form_data_str = f"username={self.email}&password={self.password}"
-            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-            async with session.post("/auth/jwt/login", data=form_data_str, headers=headers) as response:
-                token_response = response
-                token = await token_response.json()
-            headers= {"Authorization": f"{token['token_type']} {token['access_token']}"}
-            
             # get job information
             is_success = True
             for job_id in job_id_list:
                 try:
-                    async with session.get("/job/ibm_job_id/id", params={"ibm_job_id": job_id}, headers=headers) as response:
+                    async with session.get("/job/ibm_job_id/id", params={"ibm_job_id": job_id}, headers=self.auth_header) as response:
                         if response.status != 200:
                             is_success = False
                         else:
@@ -233,15 +211,16 @@ class JobManagerClient:
                             del job_info["id"]
                             del job_info["owner_id"]
                             job_info_list.append(job_info)
-                except Exception as e:
-                    raise e
-            
-        if is_success:
-            print(json.dumps(job_info_list, indent = self._json_indent))
-        else:
-            print("Errors in deleting jobs!")
+                except Exception as exception:
+                    raise exception
         
-        return is_success
+        job_info = json.dumps(job_info_list, indent = self._json_indent)
+        if is_success:
+            print(job_info)
+        else:
+            print("Errors in printing jobs!")
+        
+        return job_info
     
 
     def print_job_info(self, job_id):
@@ -249,26 +228,19 @@ class JobManagerClient:
     
 
     async def update_job_info_async(self, job_info):
+        self._check_login()
+
         job_info_list = self._parse_job_list(job_info)
         async with aiohttp.ClientSession(base_url=self.host_full_url) as session:
-            
-            # get token
-            form_data_str = f"username={self.email}&password={self.password}"
-            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-            async with session.post("/auth/jwt/login", data=form_data_str, headers=headers) as response:
-                token_response = response
-                token = await token_response.json()
-            headers= {"Authorization": f"{token['token_type']} {token['access_token']}"}
-            
             # update jobs
             is_success = True
             for job_info in job_info_list:
                 try:
-                    async with session.put("/job/ibm_job_id/id", params={"ibm_job_id": job_info["job_id"]}, json=job_info, headers=headers) as response:
+                    async with session.put("/job/ibm_job_id/id", params={"ibm_job_id": job_info["job_id"]}, json=job_info, headers=self.auth_header) as response:
                         if response.status != 200:
                             is_success = False
-                except Exception as e:
-                    raise e
+                except Exception as exception:
+                    raise exception
             
         if is_success:
             print("Successfully update all jobs!")
@@ -283,27 +255,20 @@ class JobManagerClient:
     
 
     async def delete_job_async(self, job_id):
+        self._check_login()
+        
         job_id_list = self._parse_job_list(job_id)
 
         async with aiohttp.ClientSession(base_url=self.host_full_url) as session:
-            
-            # get token
-            form_data_str = f"username={self.email}&password={self.password}"
-            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-            async with session.post("/auth/jwt/login", data=form_data_str, headers=headers) as response:
-                token_response = response
-                token = await token_response.json()
-            headers= {"Authorization": f"{token['token_type']} {token['access_token']}"}
-            
             # delete jobs
             is_success = True
             for job_id in job_id_list:
                 try:
-                    async with session.delete("/job/ibm_job_id/id", params={"ibm_job_id": job_id}, headers=headers):
+                    async with session.delete("/job/ibm_job_id/id", params={"ibm_job_id": job_id}, headers=self.auth_header) as response:
                         if response.status != 200:
                             is_success = False
-                except Exception as e:
-                    raise e
+                except Exception as exception:
+                    raise exception
             
         if is_success:
             print("Successfully delete all jobs!")
@@ -318,32 +283,25 @@ class JobManagerClient:
 
 
     async def delete_all_job_async(self):
+        self._check_login()
+
         async with aiohttp.ClientSession(base_url=self.host_full_url) as session:
-            
-            # get token
-            form_data_str = f"username={self.email}&password={self.password}"
-            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-            async with session.post("/auth/jwt/login", data=form_data_str, headers=headers) as response:
-                token_response = response
-                token = await token_response.json()
-            headers= {"Authorization": f"{token['token_type']} {token['access_token']}"}
-            
             # get all job ids
             try:
-                async with session.get("/job/", headers=headers) as response:
+                async with session.get("/job/", headers=self.auth_header) as response:
                     response_json = (await response.json())["data"][0]
-            except Exception as e:
-                raise e
+            except Exception as exception:
+                raise exception
 
             # delete jobs
             is_success = True
             for job_info in response_json:
                 try:
-                    async with session.delete("/job/ibm_job_id/id", params={"ibm_job_id": job_info["job_id"]}, headers=headers) as response:
+                    async with session.delete("/job/ibm_job_id/id", params={"ibm_job_id": job_info["job_id"]}, headers=self.auth_header) as response:
                         if response.status != 200:
                             is_success = False
-                except Exception as e:
-                    raise e
+                except Exception as exception:
+                    raise exception
         
         if is_success:
             print("Successfully delete all jobs!")
@@ -370,15 +328,6 @@ class JobManagerClient:
         ]
 
         async with aiohttp.ClientSession(base_url=self.host_full_url) as session:
-            
-            # get token
-            form_data_str = f"username={self.email}&password={self.password}"
-            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-            async with session.post("/auth/jwt/login", data=form_data_str, headers=headers) as response:
-                token_response = response
-                token = await token_response.json()
-            headers= {"Authorization": f"{token['token_type']} {token['access_token']}"}
-
             # register jobs
             is_success = True
             for job_info in self._parse_job_register_info(job, notify_status):
@@ -391,11 +340,11 @@ class JobManagerClient:
                 }
 
                 try:
-                    async with session.post("/job/", json=job_data, headers=headers) as response:
+                    async with session.post("/job/", json=job_data, headers=self.auth_header) as response:
                         if response.status != 200:
                             is_success = False
-                except Exception as e:
-                    raise e
+                except Exception as exception:
+                    raise exception
         
         if is_success:
             print("Successfully register all jobs!")
@@ -473,15 +422,6 @@ class JobManagerClient:
             notify_status = [["RUNNING"], ["DONE"]]
 
         async with aiohttp.ClientSession(base_url=self.host_full_url) as session:
-            
-            # get token
-            form_data_str = f"username={self.email}&password={self.password}"
-            headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-            async with session.post("/auth/jwt/login", data=form_data_str, headers=headers) as response:
-                token_response = response
-                token = await token_response.json()
-            headers= {"Authorization": f"{token['token_type']} {token['access_token']}"}
-
             # register jobs
             is_success = True
             for i, job_i in enumerate([job_first, job_last]):
@@ -494,11 +434,11 @@ class JobManagerClient:
                 }
 
                 try:
-                    async with session.post("/job/", json=job_data, headers=headers) as response:
+                    async with session.post("/job/", json=job_data, headers=self.auth_header) as response:
                         if response.status != 200:
                             is_success = False
-                except Exception as e:
-                    raise e
+                except Exception as exception:
+                    raise exception
         
         if is_success:
             print("Successfully register all jobs!")
