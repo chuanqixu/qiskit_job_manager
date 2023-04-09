@@ -7,26 +7,37 @@ from qiskit_job_manager_client.job_schema import JobStatus
 
 class JobManagerClient:
     def __init__(self, host_url = None, host_port = None, email = None, password = None) -> None:
+        self.host_url = None
+        self.host_port = None
+        self.email = None
+        self.password = None
+        
         if host_url or not settings.HOST:
             self.host_url = host_url
         else:
             self.host_url = settings.HOST
+        
         if host_port or not settings.PORT:
             self.host_port = host_port
         else:
             self.host_port = settings.PORT
+        
+        if not self.host_url or not self.host_port:
+            raise ValueError("Please specify host url and port")
+        
         self.host_full_url = self.host_url + ":" + str(self.host_port)
         if email or not settings.EMAIL:
             self.email = email
         else:
             self.email = settings.EMAIL
+        
         if password or not settings.PASSWORD:
             self.password = password
         else:
             self.password = settings.PASSWORD
         
         # for print
-        self.json_indent = 4
+        self._json_indent = 4
 
     
     def login(self, email, password):
@@ -155,7 +166,7 @@ class JobManagerClient:
 
     async def print_user_info_async(self):
         response_json = await self._auth_request("get", "/users/me", return_json=True)
-        print(json.dumps(response_json, indent = self.json_indent))
+        print(json.dumps(response_json, indent = self._json_indent))
         return response_json
 
 
@@ -188,7 +199,7 @@ class JobManagerClient:
 
     async def print_all_job_info_async(self):
         response_json = await self._auth_request("get", "/job/", return_json=True)
-        print(json.dumps(response_json["data"][0], indent = self.json_indent))
+        print(json.dumps(response_json["data"][0], indent = self._json_indent))
         return response_json
     
 
@@ -226,7 +237,7 @@ class JobManagerClient:
                     raise e
             
         if is_success:
-            print(json.dumps(job_info_list, indent = self.json_indent))
+            print(json.dumps(job_info_list, indent = self._json_indent))
         else:
             print("Errors in deleting jobs!")
         
