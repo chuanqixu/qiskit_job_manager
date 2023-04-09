@@ -1,5 +1,6 @@
 import asyncio
 from bson.objectid import ObjectId
+import pymongo
 
 from ..configure import settings
 from ..database.db import job_collection, user_collection
@@ -21,18 +22,23 @@ async def check_job_status():
 
     interval = settings.BACKGROUND_INTERVAL
 
+    previous_user_id = None
+
     while True:
-        async for job in job_collection.find():
+        async for job in job_collection.find().sort('onwer_id', pymongo.ASCENDING):
             job_in_db = job_helper(job)
             user = await user_collection.find_one({"_id": ObjectId(job_in_db["owner_id"])})
             provider_info = job_in_db["provider"]
 
-            try:
-                IBMQ.enable_account(user["ibm_quantum_token"])
-            except RequestsApiError:
-                notifier.send_email(to_addr=user["email"], subject="IBM Quantum Token is not Valid")
-                await delete_job_super(job_in_db["id"])
-                continue
+            if job_in_db["owner_id"] != previous_user_id:
+                if previous_user_id:
+                    IBMQ.disable_account()
+                try:
+                    IBMQ.enable_account(user["ibm_quantum_token"])
+                except RequestsApiError:
+                    notifier.send_email(to_addr=user["email"], subject="IBM Quantum Token is not Valid")
+                    await delete_job_super(job_in_db["id"])
+                    continue
 
             try:
                 provider = IBMQ.get_provider(hub=provider_info[0], group=provider_info[1], project=provider_info[2])
@@ -65,7 +71,7 @@ async def check_job_status():
                     notifier.send_email(to_addr=user["email"], subject=subject)
                     job_in_db["notify_status"].remove(job_status.name)
                     await update_job_super(job_in_db["id"], job_in_db)
-
-            IBMQ.disable_account()
-
+            
+            previous_user_id = job_in_db["owner_id"]
+            
             await asyncio.sleep(interval)
