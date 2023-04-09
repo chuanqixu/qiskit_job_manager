@@ -1,7 +1,6 @@
 **__pycache__**
 **.egg-info
 build
-/__init__.py
-qiskit_job_manager/__init__.py
 .env
 TODO
+test.py
