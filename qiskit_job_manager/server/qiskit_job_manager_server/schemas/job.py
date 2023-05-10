@@ -22,7 +22,7 @@ JOB_FINAL_STATES = (JobStatus.DONE.value, JobStatus.CANCELLED.value, JobStatus.E
 
 
 class JobSchema(BaseModel):
-    job_id: str = Field(min_length=24, max_length=24, default="000000000000000000000000")
+    job_id: str = Field(min_length=20, max_length=24, default="000000000000000000000000")
     provider: list[str] = Field(min_items=3, max_items=3, default=["hub", "group", "project"])
     backend_name: str = Field(default="ibm_lagos")
     notify_status: list[JobStatus] = Field(default=[JobStatus.DONE])
