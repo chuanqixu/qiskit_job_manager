@@ -44,12 +44,15 @@ class JobManagerClient:
         # for print
         self._json_indent = 4
 
+    def run_async(self, obj):
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(obj)
 
     def login(self, email, password):
         # get token
         form_data_str = f"username={email}&password={password}"
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        token = asyncio.run(self._request("post", "/auth/jwt/login", return_json=True, handler=self._empty_handler, data=form_data_str, headers=headers))
+        token = self.run_async(self._request("post", "/auth/jwt/login", return_json=True, handler=self._empty_handler, data=form_data_str, headers=headers))
 
         self.auth_token = token
         self.auth_header = {"Authorization": f"{token['token_type']} {token['access_token']}"}
@@ -65,9 +68,6 @@ class JobManagerClient:
         else:
             request_kwargs["headers"]= self.auth_header
         return request_kwargs
-
-    # def test(self):
-    #     asyncio.run(self.test_print_user_info_async())
 
     # async def test_print_user_info_async(self):
     #     response_json = await self._request("get", "/users/me", return_json=True, headers={"Authorization": f"{self.auth_token['token_type']} {self.auth_token['access_token']}"})
@@ -120,7 +120,8 @@ class JobManagerClient:
             return True
 
     def test_connection(self):
-        return asyncio.run(self._request("get", "/"))
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(self._request("get", "/"))
 
     async def _auth_request(self, request, url, return_json = False, special_handler_dict = {}, **request_kwargs):
         # because there are two requests: 1. to get the token; 2. to get the response
@@ -146,7 +147,8 @@ class JobManagerClient:
 
 
     def create_user(self, email, password, ibm_quantum_token = None):
-        asyncio.run(self.create_user_async(email=email, password=password, ibm_quantum_token=ibm_quantum_token))
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.create_user_async(email=email, password=password, ibm_quantum_token=ibm_quantum_token))
 
 
     async def print_user_info_async(self):
@@ -156,7 +158,7 @@ class JobManagerClient:
 
 
     def print_user_info(self):
-        asyncio.run(self.print_user_info_async())
+        self.run_async(self.print_user_info_async())
 
 
     async def update_user_info_async(self, password = None, ibm_quantum_token = None):
@@ -170,7 +172,7 @@ class JobManagerClient:
     
 
     def update_user_info(self, password = None, ibm_quantum_token = None):
-        asyncio.run(self.update_user_info_async(password=password, ibm_quantum_token=ibm_quantum_token))
+        self.run_async(self.update_user_info_async(password=password, ibm_quantum_token=ibm_quantum_token))
 
     # async def user_delete(self):
     #     user_id = (await (await self._auth_request("get", "/users/me", special_handler_dict={200: self.non_handler})).json())["id"]
@@ -189,8 +191,8 @@ class JobManagerClient:
     
 
     def print_all_job_info(self):
-        asyncio.run(self.print_all_job_info_async())
-    
+        self.run_async(self.print_all_job_info_async())
+
 
     async def print_job_info_async(self, job_id):
         self._check_login()
@@ -224,7 +226,7 @@ class JobManagerClient:
     
 
     def print_job_info(self, job_id):
-        asyncio.run(self.print_job_info_async(job_id=job_id))
+        self.run_async(self.print_job_info_async(job_id=job_id))
     
 
     async def update_job_info_async(self, job_info):
@@ -251,7 +253,7 @@ class JobManagerClient:
     
 
     def update_job_info(self, job_info):
-        asyncio.run(self.update_job_info_async(job_info=job_info))
+        self.run_async(self.update_job_info_async(job_info=job_info))
     
 
     async def delete_job_async(self, job_id):
@@ -279,7 +281,7 @@ class JobManagerClient:
 
 
     def delete_job(self, job_id):
-        asyncio.run(self.delete_job_async(job_id=job_id))
+        self.run_async(self.delete_job_async(job_id=job_id))
 
 
     async def delete_all_job_async(self):
@@ -312,7 +314,7 @@ class JobManagerClient:
 
 
     def delete_all_job(self):
-        asyncio.run(self.delete_all_job_async())
+        self.run_async(self.delete_all_job_async())
 
     async def register_job_async(self, job, notify_status = None):
         import copy
@@ -353,7 +355,7 @@ class JobManagerClient:
     
 
     def register_job(self, job, notify_status = None):
-        asyncio.run(self.register_job_async(job=job, notify_status=notify_status))
+        self.run_async(self.register_job_async(job=job, notify_status=notify_status))
 
     
     def _parse_job_register_info(self, job, notify_status = None):
@@ -447,7 +449,7 @@ class JobManagerClient:
     
 
     def register_start_and_done(self, job, notify_status = None):
-        asyncio.run(self.register_start_and_done_async(job=job, notify_status=notify_status))
+        self.run_async(self.register_start_and_done_async(job=job, notify_status=notify_status))
 
     # ---------------------------------------------------------------------
 
