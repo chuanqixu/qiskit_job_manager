@@ -46,7 +46,9 @@ class JobManagerClient:
 
     def run_async(self, obj):
         loop = asyncio.get_event_loop()
-        return loop.run_until_complete(obj)
+        # return loop.run_until_complete(obj)
+        task = loop.create_task(obj)
+        return loop.run_until_complete(task)
 
     def login(self, email, password):
         # get token
