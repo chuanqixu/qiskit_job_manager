@@ -14,28 +14,28 @@ class JobManagerClient:
         self.auth_token = None
         self.auth_header = None
 
-        if host_url or not settings.HOST:
+        if host_url:
             self.host_url = host_url
-        else:
+        elif settings.HOST:
             self.host_url = settings.HOST
 
-        if host_port or not settings.PORT:
+        if host_port:
             self.host_port = host_port
-        else:
+        elif settings.PORT:
             self.host_port = settings.PORT
 
         if not self.host_url or not self.host_port:
             raise ValueError("Please specify host url and port!")
 
         self.host_full_url = self.host_url + ":" + str(self.host_port)
-        if email or not settings.EMAIL:
+        if email:
             self.email = email
-        else:
+        elif settings.EMAIL:
             self.email = settings.EMAIL
 
-        if password or not settings.PASSWORD:
+        if password:
             self.password = password
-        else:
+        elif settings.PASSWORD:
             self.password = settings.PASSWORD
 
         if self.email and self.password:
