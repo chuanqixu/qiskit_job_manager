@@ -1,0 +1,9 @@
+FROM python:3.11-slim
+WORKDIR /qiskit_job_manager_server
+
+COPY requirements.txt ./
+COPY setup.py ./
+COPY ./qiskit_job_manager_server ./qiskit_job_manager_server
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install .

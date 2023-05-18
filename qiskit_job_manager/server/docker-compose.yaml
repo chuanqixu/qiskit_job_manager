@@ -1,0 +1,19 @@
+services:
+    # web:
+    #     build: nginx
+    #     command:
+    #     ports:
+    #       - 80:80
+    #       - 443:443
+    #     depends_on:
+    #       - app
+
+    app:
+        build: .
+        image: qiskit_job_manager_server
+        container_name: qiskit_job_manager_server
+        command: python -c "from qiskit_job_manager_server import run_server; run_server()"
+        environment:
+          - PORT=8000
+        ports:
+          - 8000:8000

@@ -5,15 +5,6 @@ A package for setting up a **server** for the email notification service, and th
 **Note: While users' passwords are stored only with their hash values, IBM Quantum Token is stored with the original values because the server needs to login the account to retrieve the job status!**
 
 
-# Note for Jupyter Notebook
-Due to issues with asyncio in Jupyter Notebook, it may raise the issue **RuntimeError: This event loop is already running in python**
-
-Fix:
-Install `nest_asyncio` and run:
-```
-import nest_asyncio
-nest_asyncio.apply()
-```
 
 # Server
 
@@ -41,7 +32,7 @@ nest_asyncio.apply()
 
 ## Usage
 
-3. Start the server by choosing one of the ways:
+Start the server by choosing one of the ways:
    1. Directly run the main file by entering the command:
         ```shellscript
             python qiskit_job_manager/server/qiskit_job_manager_server/main.py
@@ -52,6 +43,12 @@ nest_asyncio.apply()
 
             run_server()
         ```
+
+
+## Running with Docker
+
+Example configuration files: [dockerfile](qiskit_job_manager/server/dockerfile) and [docker-compose.yaml](qiskit_job_manager/server/docker-compose.yaml) are in [qiskit_job_manager/server](qiskit_job_manager/server).
+
 
 # Client
 
@@ -175,6 +172,16 @@ nest_asyncio.apply()
         ```python
         client.delete_all_job()
         ```
+
+## Note for Jupyter Notebook
+Due to issues with asyncio in Jupyter Notebook, it may raise the issue **RuntimeError: This event loop is already running in python**
+
+Fix:
+Install `nest_asyncio` and run:
+```
+import nest_asyncio
+nest_asyncio.apply()
+```
 
 # License
 
