@@ -1,0 +1,8 @@
+FROM nginx
+
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY allowed_ip.conf /etc/nginx_conf/allowed_ip.conf
+COPY authenticated_origin_pull_ca.pem /etc/nginx_conf/authenticated_origin_pull_ca.pem
+COPY server.key.pem /etc/nginx_conf/server.key.pem
+COPY server.pem /etc/nginx_conf/server.pem
+RUN mkdir /etc/nginx_logs

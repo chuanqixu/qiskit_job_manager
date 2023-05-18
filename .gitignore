@@ -4,3 +4,4 @@ build
 .env
 TODO
 test.py
+**.pem
